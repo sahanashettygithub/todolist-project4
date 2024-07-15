@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List </title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #3347e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #f3f4f6;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            width: 100%;
+            max-width: 600px;
+            border: 2px solid #181d1d;
+            text-align: center;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+
+        h1 {
+            color: #050702;
+            text-shadow: 1px 1px 2px #fff;
+            margin-bottom: 20px;
+        }
+
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #task-input, #date-input {
+            padding: 10px;
+            border: 1px solid #050505;
+            border-radius: 4px;
+            background-color: #f1f0ef;
+            margin: 5px 0;
+            width: 80%;
+        }
+
+        #add-task-button {
+            padding: 10px;
+            background-color: #fbfbfb;
+            color: #010101;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        #add-task-button:hover {
+            background-color: #3f4ade;
+        }
+
+        .task-group {
+            margin-bottom: 20px;
+            background-color: #f07edf;
+            border: 1px solid #f7f7f5;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-group-header {
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 10px;
+        }
+
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px dashed #cfd28c;
+            background-color: #fff8dc;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+
+        .task.completed .task-text {
+            text-decoration: line-through;
+            color: #3f3d3d;
+        }
+
+        .task .task-text {
+            margin: 5px 0;
+        }
+
+        .task .actions {
+            display: flex;
+        }
+
+        .task .actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 5px;
+            font-size: 14px;
+            color: #000000;
+            transition: color 0.3s ease;
+        }
+
+        .task .actions button.edit:hover {
+            color: #c44a4a;
+        }
+
+        .task .actions button.delete:hover {
+            color: #c54242;
+        }
+
+        .task .actions button.toggle:hover {
+            color: #ef953c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do List </h1>
+        <div class="input-container">
+            <input type="text" id="task-input" placeholder="Add a new task...">
+            <input type="date" id="date-input">
+            <select id="date-option">
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="future">Select Date</option>
+            </select>
+            <button id="add-task-button">Add Task</button>
+        </div>
+        <div id="task-list"></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const taskInput = document.getElementById('task-input');
+            const dateInput = document.getElementById('date-input');
+            const dateOption = document.getElementById('date-option');
+            const addTaskButton = document.getElementById('add-task-button');
+            const taskList = document.getElementById('task-list');
+
+            // Load tasks from local storage
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+            // Group tasks by date
+            function groupTasksByDate(tasks) {
+                const groupedTasks = tasks.reduce((acc, task) => {
+                    const date = new Date(task.date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    if (!acc[date]) {
+                        acc[date] = [];
+                    }
+                    acc[date].push(task);
+                    return acc;
+                }, {});
+                return groupedTasks;
+            }
+
+            // Render tasks
+            function renderTasks() {
+                taskList.innerHTML = '';
+                const groupedTasks = groupTasksByDate(tasks);
+                for (const date in groupedTasks) {
+                    const taskGroup = document.createElement('div');
+                    taskGroup.classList.add('task-group');
+
+                    const dateHeader = document.createElement('div');
+                    dateHeader.classList.add('task-group-header');
+                    dateHeader.textContent = date;
+                    taskGroup.appendChild(dateHeader);
+
+                    groupedTasks[date].forEach((task, index) => {
+                        const taskItem = document.createElement('div');
+                        taskItem.classList.add('task');
+                        if (task.completed) taskItem.classList.add('completed');
+
+                        taskItem.innerHTML = `
+                            <span class="task-text">${task.text}</span>
+                            <div class="actions">
+                                <button class="edit">Edit</button>
+                                <button class="delete">Delete</button>
+                                <button class="toggle">${task.completed ? 'Incomplete' : 'Complete'}</button>
+                            </div>
+                        `;
+                        taskGroup.appendChild(taskItem);
+
+                        // Edit task
+                        taskItem.querySelector('.edit').addEventListener('click', () => {
+                            const newText = prompt('Edit task:', task.text);
+                            if (newText !== null && newText.trim() !== '') {
+                                tasks[tasks.indexOf(task)].text = newText;
+                                saveTasks();
+                                renderTasks();
+                            }
+                        });
+
+                        // Delete task
+                        taskItem.querySelector('.delete').addEventListener('click', () => {
+                            tasks.splice(tasks.indexOf(task), 1);
+                            saveTasks();
+                            renderTasks();
+                        });
+
+                        // Toggle task completion
+                        taskItem.querySelector('.toggle').addEventListener('click', () => {
+                            tasks[tasks.indexOf(task)].completed = !tasks[tasks.indexOf(task)].completed;
+                            saveTasks();
+                            renderTasks();
+                        });
+                    });
+
+                    taskList.appendChild(taskGroup);
+                }
+            }
+
+            // Save tasks to local storage
+            function saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
+
+            // Add new task
+            addTaskButton.addEventListener('click', () => {
+                const taskText = taskInput.value.trim();
+                const taskDateOption = dateOption.value;
+                let taskDate = null;
+
+                if (taskDateOption === 'today') {
+                    taskDate = new Date().toLocaleDateString('en-US');
+                } else if (taskDateOption === 'tomorrow') {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(new Date().getDate() + 1);
+                    taskDate = tomorrow.toLocaleDateString('en-US');
+                } else {
+                    taskDate = new Date(dateInput.value).toLocaleDateString('en-US');
+                }
+
+                if (taskText !== '' && taskDate !== '') {
+                    const task = {
+                        text: taskText,
+                        completed: false,
+                        date: taskDate
+                    };
+                    tasks.push(task);
+                    saveTasks();
+                    renderTasks();
+                    taskInput.value = '';
+                    dateInput.value = '';
+                }
+            });
+
+            // Initial render
+            renderTasks();
+        });
+    </script>
+</body>
+</html>
